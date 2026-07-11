@@ -21,7 +21,7 @@ import os
 import json
 import time
 import httpx
-from pipecat.frames.frames import TextFrame
+from pipecat.frames.frames import TextFrame, LLMTextFrame, LLMFullResponseEndFrame, TranscriptionFrame
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -57,7 +57,7 @@ RESTAURANT_SLUG = os.environ.get("RESTAURANT_SLUG", "taible-bistro")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 
-def supabase_upsert(key: str, value: any):
+def supabase_upsert(key: str, value):
     if not SUPABASE_URL or not SUPABASE_SECRET_KEY: return
     headers = {
         "apikey": SUPABASE_SECRET_KEY,
@@ -66,8 +66,20 @@ def supabase_upsert(key: str, value: any):
         "Prefer": "resolution=merge-duplicates"
     }
     try:
-        httpx.post(f"{SUPABASE_URL}/rest/v1/kv_store", headers=headers, json={"key": key, "value": value})
-    except: pass
+        httpx.post(
+            f"{SUPABASE_URL}/rest/v1/kv_store",
+            headers=headers,
+            json={"key": key, "value": value},
+            timeout=5.0
+        )
+        print(f"[SUPABASE] Wrote {key}: {len(value) if isinstance(value, list) else '?'} items")
+    except Exception as e:
+        print(f"[SUPABASE ERROR] {e}")
+
+async def supabase_upsert_async(key: str, value):
+    """Non-blocking supabase write that runs in a thread pool."""
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, supabase_upsert, key, value)
 
 
 # ── System Prompt ────────────────────────────────────────────────────────
@@ -111,14 +123,16 @@ def _write_message(role: str, text: str):
     text = text.strip()
     if not text:
         return
+    print(f"[MSG] {role}: {text[:80]}")
     _messages.append({"id": f"{role}-{int(time.time()*1000)}", "role": role, "text": text, "ts": time.time()})
     if len(_messages) > 60:
         _messages = _messages[-60:]
-    supabase_upsert("messages", _messages)
+    # Fire and forget in background
+    asyncio.ensure_future(supabase_upsert_async("messages", list(_messages)))
 
 
 class TextCapture(FrameProcessor):
-    """Captures LLM text output sentence by sentence and writes to messages.json."""
+    """Captures LLM text and transcription frames, writes them to Supabase."""
     def __init__(self):
         super().__init__()
         self._buf = ""
@@ -126,19 +140,25 @@ class TextCapture(FrameProcessor):
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
         
-        # Capture User's speech
-        from pipecat.frames.frames import TranscriptionFrame, TextFrame, LLMFullResponseEndFrame
-        if isinstance(frame, TranscriptionFrame) and getattr(frame, "text", "").strip():
-            _write_message("user", frame.text)
+        # Capture User's transcribed speech
+        if isinstance(frame, TranscriptionFrame):
+            txt = getattr(frame, "text", "").strip()
+            if txt:
+                print(f"[TRANSCRIPTION] {txt}")
+                _write_message("user", txt)
             
-        # Capture Assistant's full response
-        if isinstance(frame, TextFrame) and getattr(frame, "text", ""):
-            self._buf += frame.text
+        # Accumulate LLM text tokens (LLMTextFrame is the correct frame in Pipecat 1.5)
+        if isinstance(frame, LLMTextFrame):
+            tok = getattr(frame, "text", "")
+            if tok:
+                self._buf += tok
             
+        # When LLM finishes its response, flush buffer to Supabase
         if isinstance(frame, LLMFullResponseEndFrame):
-            if self._buf:
-                _write_message("assistant", self._buf)
-                self._buf = ""
+            if self._buf.strip():
+                print(f"[LLM RESPONSE] {self._buf[:80]}")
+                _write_message("assistant", self._buf.strip())
+            self._buf = ""
                 
         await self.push_frame(frame, direction)
 
@@ -359,14 +379,16 @@ async def create_pipeline(room_name: str) -> PipelineTask:
         llm.register_function(tool.name, mcp_handler)
 
     text_capture = TextCapture()
+    text_capture_stt = TextCapture()  # captures user transcriptions
 
     pipeline = Pipeline(
         [
             transport.input(),               # WebRTC audio in
             stt,                              # Deepgram STT
+            text_capture_stt,                 # Capture user speech BEFORE aggregator
             context_aggregator.user(),        # Accumulate user speech turn
             llm,                              # Groq LLM
-            text_capture,                     # Write agent text to messages.json
+            text_capture,                     # Capture assistant text AFTER LLM
             tts,                              # Deepgram TTS
             transport.output(),               # WebRTC audio out
             context_aggregator.assistant(),   # Record assistant turn
