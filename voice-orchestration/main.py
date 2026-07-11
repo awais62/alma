@@ -249,12 +249,12 @@ async def create_pipeline(room_name: str) -> PipelineTask:
         api_key=DEEPGRAM_API_KEY,
     )
 
-    # LLM: AMD ROCm vLLM (Qwen2.5-7B-Instruct) via OpenAI API standard
+    # LLM: Groq via OpenAI standard API
     from pipecat.services.openai.llm import OpenAILLMService
     llm = OpenAILLMService(
-        api_key="EMPTY", # vLLM doesn't require an API key
-        model="Qwen/Qwen2.5-7B-Instruct",
-        base_url=f"{VLLM_BASE_URL}/v1",
+        api_key=GROQ_API_KEY,
+        model="llama-3.3-70b-versatile",
+        base_url="https://api.groq.com/openai/v1",
     )
 
     # TTS: Deepgram Aura
@@ -387,6 +387,8 @@ async def main():
             )
             await runner.run(task)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Pipeline error: {e}")
         print("Pipeline ended, restarting for next session in 2 seconds...")
         await asyncio.sleep(2)
