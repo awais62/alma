@@ -54,6 +54,22 @@ VLLM_BASE_URL = os.environ.get("VLLM_BASE_URL", "")
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080")
 RESTAURANT_SLUG = os.environ.get("RESTAURANT_SLUG", "taible-bistro")
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
+
+def supabase_upsert(key: str, value: any):
+    if not SUPABASE_URL or not SUPABASE_SECRET_KEY: return
+    headers = {
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": f"Bearer {SUPABASE_SECRET_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+    try:
+        httpx.post(f"{SUPABASE_URL}/rest/v1/kv_store", headers=headers, json={"key": key, "value": value})
+    except: pass
+
+
 # ── System Prompt ────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are Alma, a friendly AI waiter at Cafe Alma restaurant.
 
@@ -87,8 +103,7 @@ ABSOLUTE RULES:
 - Keep responses under 2 sentences."""
 
 
-# ── Message log (frontend polls this file) ────────────────────────────────
-MESSAGES_LOG = os.path.join(os.path.dirname(__file__), "..", "taible", "public", "messages.json")
+# ── Message log ──────────────────────────────────────────────────────────
 _messages: list = []
 
 def _write_message(role: str, text: str):
@@ -99,12 +114,8 @@ def _write_message(role: str, text: str):
     _messages.append({"id": f"{role}-{int(time.time()*1000)}", "role": role, "text": text, "ts": time.time()})
     if len(_messages) > 60:
         _messages = _messages[-60:]
-    try:
-        os.makedirs(os.path.dirname(MESSAGES_LOG), exist_ok=True)
-        with open(MESSAGES_LOG, "w", encoding="utf-8") as f:
-            json.dump(_messages, f)
-    except Exception:
-        pass
+    supabase_upsert("messages", _messages)
+
 
 class TextCapture(FrameProcessor):
     """Captures LLM text output sentence by sentence and writes to messages.json."""
@@ -204,19 +215,15 @@ async def create_pipeline(room_name: str) -> PipelineTask:
     global _messages
     _messages = []  # Clear chat history on new session
 
-    # ── CRITICAL: Clear ALL shared state files on every new session ──────────
-    # Without this, stale order.json from a previous session gets read by the
+    # ── CRITICAL: Clear ALL shared state on every new session ──────────
+    # Without this, stale data from a previous session gets read by the
     # frontend polling loop and auto-populates the cart before the user speaks.
-    ORDER_LOG = os.path.join(os.path.dirname(__file__), "..", "taible", "public", "order.json")
     try:
-        os.makedirs(os.path.dirname(MESSAGES_LOG), exist_ok=True)
-        with open(MESSAGES_LOG, "w") as f:
-            json.dump([], f)
-        with open(ORDER_LOG, "w") as f:
-            json.dump([], f)
-        print("[Session] Cleared messages.json and order.json for fresh session.")
+        supabase_upsert("messages", [])
+        supabase_upsert("order", [])
+        print("[Session] Cleared messages and order from Supabase for fresh session.")
     except Exception as e:
-        print(f"[Session] Warning: could not clear log files: {e}")
+        print(f"[Session] Warning: could not clear state: {e}")
 
     from pipecat.services.openai.llm import OpenAILLMService
     from pipecat.services.deepgram.stt import DeepgramSTTService
@@ -327,12 +334,8 @@ async def create_pipeline(room_name: str) -> PipelineTask:
             found = next((item for item in MOCK_DB["menu"] if item_id.lower() in item["id"].lower() or item_id.lower() in item["name"].lower()), None)
             if found:
                 MOCK_DB["order"].append(found)
-                # Write item addition to the shared order file so frontend can update cart
-                order_file = os.path.join(os.path.dirname(__file__), "..", "taible", "public", "order.json")
-                try:
-                    with open(order_file, "w") as f:
-                        json.dump(MOCK_DB["order"], f)
-                except: pass
+                # Write item addition to the shared order in Supabase
+                supabase_upsert("order", MOCK_DB["order"])
                 result = json.dumps({"status": "added", "item": found})
             else:
                 result = json.dumps({"error": "Item not found in menu"})

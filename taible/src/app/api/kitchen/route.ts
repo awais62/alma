@@ -1,44 +1,46 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
+import { createClient } from "@supabase/supabase-js"
 
-const KITCHEN_FILE = path.join(process.cwd(), "public", "kitchen-orders.json")
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-/** GET – return all kitchen orders */
 export async function GET() {
   try {
-    if (!fs.existsSync(KITCHEN_FILE)) return NextResponse.json([])
-    const data = JSON.parse(fs.readFileSync(KITCHEN_FILE, "utf-8"))
-    return NextResponse.json(Array.isArray(data) ? data : [])
+    const { data } = await supabase.from('kv_store').select('value').eq('key', 'kitchen').single()
+    if (data && data.value) {
+      return NextResponse.json(Array.isArray(data.value) ? data.value : [])
+    }
+    return NextResponse.json([])
   } catch {
     return NextResponse.json([])
   }
 }
 
-/** POST – add a new confirmed order */
 export async function POST(req: Request) {
   try {
     const order = await req.json()
-    let orders: unknown[] = []
-    if (fs.existsSync(KITCHEN_FILE)) {
-      orders = JSON.parse(fs.readFileSync(KITCHEN_FILE, "utf-8"))
+    let orders: any[] = []
+    const { data } = await supabase.from('kv_store').select('value').eq('key', 'kitchen').single()
+    if (data && Array.isArray(data.value)) {
+      orders = data.value
     }
     orders = [order, ...orders]
-    fs.writeFileSync(KITCHEN_FILE, JSON.stringify(orders))
+    await supabase.from('kv_store').upsert({ key: 'kitchen', value: orders })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: "Failed to save order" }, { status: 500 })
   }
 }
 
-/** PATCH – update order status */
 export async function PATCH(req: Request) {
   try {
     const { id, status } = await req.json()
-    if (!fs.existsSync(KITCHEN_FILE)) return NextResponse.json({ ok: false })
-    let orders: Array<{ id: string; status: string }> = JSON.parse(fs.readFileSync(KITCHEN_FILE, "utf-8"))
-    orders = orders.map(o => o.id === id ? { ...o, status } : o)
-    fs.writeFileSync(KITCHEN_FILE, JSON.stringify(orders))
+    const { data } = await supabase.from('kv_store').select('value').eq('key', 'kitchen').single()
+    if (!data || !Array.isArray(data.value)) return NextResponse.json({ ok: false })
+    let orders = data.value
+    orders = orders.map((o: any) => o.id === id ? { ...o, status } : o)
+    await supabase.from('kv_store').upsert({ key: 'kitchen', value: orders })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: "Failed to update order" }, { status: 500 })

@@ -1,20 +1,25 @@
-﻿import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
-const MSG_FILE = path.join(process.cwd(), "public", "messages.json")
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function GET() {
   try {
-    if (!fs.existsSync(MSG_FILE)) return NextResponse.json([])
-    const data = JSON.parse(fs.readFileSync(MSG_FILE, "utf-8"))
-    return NextResponse.json(data)
+    const { data } = await supabase.from('kv_store').select('value').eq('key', 'messages').single()
+    if (data && data.value) {
+      return NextResponse.json(data.value)
+    }
+    return NextResponse.json([])
   } catch {
     return NextResponse.json([])
   }
 }
 
 export async function DELETE() {
-  try { if (fs.existsSync(MSG_FILE)) fs.writeFileSync(MSG_FILE, "[]") } catch {}
+  try {
+    await supabase.from('kv_store').upsert({ key: 'messages', value: [] })
+  } catch {}
   return NextResponse.json({ ok: true })
 }

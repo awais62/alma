@@ -1,38 +1,38 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
+import { createClient } from "@supabase/supabase-js"
 
-const ORDER_FILE = path.join(process.cwd(), "public", "order.json")
-const MSG_FILE = path.join(process.cwd(), "public", "messages.json")
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-/** GET – return current backend order items */
 export async function GET() {
   try {
-    if (!fs.existsSync(ORDER_FILE)) return NextResponse.json([])
-    const data = JSON.parse(fs.readFileSync(ORDER_FILE, "utf-8"))
-    return NextResponse.json(Array.isArray(data) ? data : [])
+    const { data } = await supabase.from('kv_store').select('value').eq('key', 'order').single()
+    if (data && data.value) {
+      return NextResponse.json(Array.isArray(data.value) ? data.value : [])
+    }
+    return NextResponse.json([])
   } catch {
     return NextResponse.json([])
   }
 }
 
-/** DELETE – clear both order and messages for a fresh session */
 export async function DELETE() {
-  try { if (fs.existsSync(ORDER_FILE)) fs.writeFileSync(ORDER_FILE, "[]") } catch {}
-  try { if (fs.existsSync(MSG_FILE)) fs.writeFileSync(MSG_FILE, "[]") } catch {}
+  try { await supabase.from('kv_store').upsert({ key: 'order', value: [] }) } catch {}
+  try { await supabase.from('kv_store').upsert({ key: 'messages', value: [] }) } catch {}
   return NextResponse.json({ ok: true })
 }
-/** POST – add item to backend order items */
+
 export async function POST(req: Request) {
   try {
     const item = await req.json()
-    let data: any[] = []
-    if (fs.existsSync(ORDER_FILE)) {
-      data = JSON.parse(fs.readFileSync(ORDER_FILE, "utf-8"))
-      if (!Array.isArray(data)) data = []
+    let order: any[] = []
+    const { data } = await supabase.from('kv_store').select('value').eq('key', 'order').single()
+    if (data && Array.isArray(data.value)) {
+      order = data.value
     }
-    data.push(item)
-    fs.writeFileSync(ORDER_FILE, JSON.stringify(data))
+    order.push(item)
+    await supabase.from('kv_store').upsert({ key: 'order', value: order })
     return NextResponse.json({ ok: true })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

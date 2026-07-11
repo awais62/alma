@@ -1,0 +1,38 @@
+services:
+  # FastMCP Web Service
+  - type: web
+    name: mcp-server
+    env: python
+    buildCommand: "cd mcp-server && pip install -r requirements.txt"
+    startCommand: "cd mcp-server && python server.py"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: PORT
+        value: "8080" # Render sets PORT dynamically, FastMCP will pick this up usually
+
+  # Voice Orchestration Background Worker (No inbound ports)
+  - type: worker
+    name: voice-orchestrator
+    env: python
+    buildCommand: "cd voice-orchestration && pip install -r requirements.txt"
+    startCommand: "cd voice-orchestration && python main.py"
+    envVars:
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: MCP_SERVER_URL
+        value: "https://mcp-server.onrender.com" # Update this to the actual web service URL once deployed
