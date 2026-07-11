@@ -141,15 +141,10 @@ export default function VoiceScreen({ restaurantName, tableNumber, cart, onOpenC
   const sessionActive = messages.length > 0 || sessionRef.current
   const detectedIdsRef = useRef<string[]>([])
 
-  // === ROOT CAUSE FIX ===
-  // On mount: wipe stale backend files AND seed lastTsRef to NOW
-  // so that ANY messages already in messages.json from a previous session
-  // are completely ignored and never trigger the fallback cart parser.
+  // On mount: clear stale backend data. Start lastTsRef at 0 so we get ALL messages from backend.
   useEffect(() => {
-    const nowTs = Math.floor(Date.now() / 1000)
-    lastTsRef.current = nowTs
+    lastTsRef.current = 0
     detectedIdsRef.current = []
-    // Clear backend stale data
     fetch("/api/order", { method: "DELETE" }).catch(() => {})
     fetch("/api/messages", { method: "DELETE" }).catch(() => {})
   }, [])
@@ -202,9 +197,8 @@ export default function VoiceScreen({ restaurantName, tableNumber, cart, onOpenC
     return () => clearInterval(interval)
   }, [])
 
-  // Poll order.json
+  // Poll order API - always run (no session gate)
   useEffect(() => {
-    if (!sessionRef.current) return
     const interval = setInterval(async () => {
       try {
         const res = await fetch("/api/order")
