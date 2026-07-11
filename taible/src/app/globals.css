@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-brown: #8F5E3A;
+  --color-brown-light: #B8855A;
+  --color-green: #5BA85C;
+  --color-green-light: #7DC47E;
+  --color-ink: #141414;
+  --color-warm-white: #FAF8F5;
+  --color-border: #E5DFD8;
+  --color-rust: #B0532F;
+  --color-muted: #7A6E66;
+  --color-card: #FFFFFF;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #FAF8F5;
+  color: #141414;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E5DFD8; border-radius: 2px; }
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.9; }
+}
+
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.12); }
+  75% { transform: scale(0.96); }
+}
+
+@keyframes orb-think {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes orb-ring {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes new-order-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(91, 168, 92, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(91, 168, 92, 0); }
+}
+
+.orb-breathe { animation: orb-breathe 3s ease-in-out infinite; }
+.orb-pulse { animation: orb-pulse 1.2s ease-in-out infinite; }
+.orb-think { animation: orb-think 2s linear infinite; }
+
+.fade-in { animation: fade-in 0.3s ease-out; }
+.slide-up { animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.new-order { animation: new-order-pulse 2s ease-in-out 3; }
+
+.orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid rgba(91, 168, 92, 0.5);
+  animation: orb-ring 1.5s ease-out infinite;
+}

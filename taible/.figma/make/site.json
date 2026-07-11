@@ -1,0 +1,10 @@
+{
+  "description": "Enables customers to place restaurant orders via AI voice assistant after scanning a QR code, while staff manage orders through a simple, real-time dashboard.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

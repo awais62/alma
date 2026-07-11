@@ -1,0 +1,25 @@
+# Voice Orchestration — docker-compose
+# Runs the Pipecat CPU pipeline that bridges the browser WebRTC
+# to the AMD ROCm GPU server.
+#
+# Usage:
+#   cp .env.example .env   # fill in all values
+#   docker compose up -d
+
+version: "3.9"
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taible-orchestrator
+    env_file: .env
+    restart: unless-stopped
+    # No inbound ports needed — agent connects outbound to LiveKit
+    # and outbound to gpu-rocm services.
+    extra_hosts:
+      # If running gpu-rocm on the same host via another compose stack,
+      # uncomment and set the correct IP:
+      # - "amd-gpu-server:192.168.1.100"
+      - "host.docker.internal:host-gateway"

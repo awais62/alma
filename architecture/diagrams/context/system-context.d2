@@ -1,0 +1,127 @@
+direction: right
+
+explanation: |md
+  # Taible — System Context
+  Who uses it, and every external system it touches
+| {
+  near: top-center
+}
+
+# ---------- PEOPLE ----------
+guest: "Guest\n(customer at the table)" {
+  shape: person
+  style: {
+    fill: "#1F242C"
+    font-color: "#FFFFFF"
+  }
+}
+
+staff: "Restaurant Staff\n(waiters · kitchen · manager)" {
+  shape: person
+  style: {
+    fill: "#1F242C"
+    font-color: "#FFFFFF"
+  }
+}
+
+# ---------- THE SYSTEM ----------
+taible: "TAIBLE\nRestaurant Voice Agent\n(QR → voice → menu → orders)" {
+  style: {
+    fill: "#0E7C7B"
+    font-color: "#FFFFFF"
+    bold: true
+    stroke: "#0A5C5B"
+  }
+}
+
+# ---------- EXTERNAL: integrations ----------
+integrations: "EXTERNAL — systems Taible integrates with" {
+  style: {
+    fill: "#F6F7F9"
+    stroke: "#B6BEC9"
+    font-color: "#67707D"
+  }
+
+  pos: "POS / Kitchen system\n[container: data.pos]" {
+    style: {
+      fill: "#8A93A0"
+      font-color: "#FFFFFF"
+    }
+  }
+
+  hub: "Model hub (Hugging Face)\n[implied by stt / llm / tts]" {
+    style: {
+      fill: "#8A93A0"
+      font-color: "#FFFFFF"
+    }
+  }
+}
+
+# ---------- EXTERNAL: infrastructure it runs on ----------
+infra: "EXTERNAL — infrastructure Taible runs on" {
+  style: {
+    fill: "#F6F7F9"
+    stroke: "#B6BEC9"
+    font-color: "#67707D"
+  }
+
+  gpu_host: "AMD cloud / ROCm GPU host\n[container: gpu — self-hosted\nsoftware on external infra]" {
+    style: {
+      fill: "#8A93A0"
+      font-color: "#FFFFFF"
+      stroke: "#C8102E"
+      stroke-width: 2
+    }
+  }
+
+  webrtc: "WebRTC transport\n(Pipecat / TURN servers)\n[edge: customer.pwa → orchestration.orch]" {
+    style: {
+      fill: "#8A93A0"
+      font-color: "#FFFFFF"
+    }
+  }
+
+  hosting: "App / tool hosting\n(Fly.io · Vercel · Cloudflare · Render)\n[container: tools.mcp note]" {
+    style: {
+      fill: "#8A93A0"
+      font-color: "#FFFFFF"
+    }
+  }
+
+  db: "Managed Supabase\n[container: data.db]" {
+    style: {
+      fill: "#8A93A0"
+      font-color: "#FFFFFF"
+    }
+  }
+}
+
+# ---------- RELATIONSHIPS ----------
+guest -> taible: "scans table QR,\ntalks to the agent (voice)"
+staff -> taible: "toggles stock in admin panel,\nreceives orders"
+
+taible -> integrations.pos: "sends confirmed orders\n(webhook)"
+taible -> integrations.hub: "downloads model weights:\nWhisper · Llama/Qwen · Kokoro\n(download-time only, not runtime)" {
+  style.stroke-dash: 4
+}
+
+taible -> infra.gpu_host: "runs the STT / LLM / TTS pipeline\n(HARD runtime dependency)" {
+  style: {
+    stroke: "#C8102E"
+    stroke-width: 2
+  }
+}
+taible <-> infra.webrtc: "relays browser ⇄ orchestrator\naudio streams"
+taible -> infra.hosting: "runs the PWA + MCP server"
+taible <-> infra.db: "reads menu / stock,\nwrites orders"
+
+# ---------- LEGEND ----------
+legend: |md
+  **Legend**
+  - Teal = the Taible system · Grey = external systems · Dark = people
+  - **Red edge** = hard runtime dependency (if the GPU host is down, Taible is mute)
+  - **Dashed edge** = download-time only (Hugging Face is never in the hot path)
+  - [brackets] = where each external appears in the container (C4 L2) diagram
+| {
+  near: bottom-center
+}

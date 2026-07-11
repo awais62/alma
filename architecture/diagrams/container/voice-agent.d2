@@ -1,0 +1,94 @@
+direction: down
+
+explanation: |md
+  # Restaurant Voice Agent on AMD GPUs
+  QR → WebRTC → self-hosted ROCm pipeline → MCP menu tools
+| {
+  near: top-center
+}
+
+customer: "1 · CUSTOMER" {
+  qr: "QR at the table\none static code per table"
+  pwa: "Web app (PWA)\nmic permission · WebRTC · no install"
+  url_note: "turestaurante.com/asistente?mesa=12\nURL carries the table #" {
+    style: {
+      fill: "#F6F7F9"
+      stroke: "#B6BEC9"
+      stroke-dash: 4
+      font-color: "#67707D"
+    }
+  }
+  qr -> pwa
+  pwa -> url_note: {
+    style.stroke-dash: 4
+  }
+}
+
+orchestration: "2 · ORCHESTRATION" {
+  orch: "Pipecat / LiveKit Agents\nCPU only · turn-taking · interruptions · streaming glue"
+}
+
+customer.pwa -> orchestration.orch: "WebRTC · bidirectional audio"
+
+gpu: "3 · AMD GPU SERVER — ROCm + Docker (fits in 24 GB VRAM, e.g. 7900 XTX)" {
+  style: {
+    fill: "#FBF1F2"
+    stroke: "#E2B4BB"
+    font-color: "#C8102E"
+  }
+
+  stt: "STT — Whisper\nwhisper.cpp built with HIP\nlarge-v3 / medium · Spanish" {
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#C8102E"
+    }
+  }
+  llm: "LLM — vLLM\nLlama 3.1 8B / Qwen 2.5 7B\nOpenAI-compatible endpoint" {
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#C8102E"
+    }
+  }
+  tts: "TTS — Kokoro\nPyTorch on ROCm\nEnglish voices · streaming" {
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#C8102E"
+    }
+  }
+
+  stt -> llm: "text"
+  llm -> tts: "reply"
+}
+
+orchestration.orch -> gpu.stt: "audio in"
+gpu.tts -> orchestration.orch: "audio out"
+
+tools: "4 · TOOLS" {
+  mcp: "MCP Server — Railway / Fly.io / small VPS\nget_menu · get_item_details · get_specials\nplace_order · call_waiter" {
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#0E7C7B"
+    }
+  }
+}
+
+gpu.llm -> tools.mcp: "tool calls · MCP (streamable HTTP)"
+
+data: "5 · DATA & OPERATIONS" {
+  db: "Postgres / Supabase\nmenu · prices · availability\nstaff admin panel toggles stock live" {
+    shape: cylinder
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#0E7C7B"
+    }
+  }
+  pos: "POS / Kitchen\nprinter or tablet receives the order\nconfirmation read back to the guest" {
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#0E7C7B"
+    }
+  }
+}
+
+tools.mcp -> data.db: "menu · stock"
+tools.mcp -> data.pos: "orders (webhook)"

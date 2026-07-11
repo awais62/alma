@@ -1,0 +1,97 @@
+# AMD ROCm GPU Pipeline — docker-compose
+# Runs on a single AMD GPU server (e.g. Radeon 7900 XTX / MI210, 24 GB VRAM).
+# Targets: ROCm 6.x, Docker with HSA/ROCm device passthrough.
+#
+# Services:
+#   vllm      — vLLM (Qwen2.5-7B-Instruct), OpenAI-compat API on :8000
+#   whisper   — whisper.cpp (HIP-compiled), HTTP server on :8178
+#   kokoro    — Kokoro TTS (PyTorch/ROCm), HTTP server on :8880
+#
+# Usage:
+#   docker compose up -d
+#   curl http://localhost:8000/health     # vLLM
+#   curl http://localhost:8178/health     # Whisper
+#   curl http://localhost:8880/health     # Kokoro
+
+version: "3.9"
+
+services:
+  # ── 1. vLLM — the LLM brain ──────────────────────────────────────────
+  vllm:
+    image: vllm/vllm-openai-rocm:latest
+    container_name: taible-vllm
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    ipc: host
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    environment:
+      - HIP_VISIBLE_DEVICES=0
+    command: >
+      --model Qwen/Qwen2.5-7B-Instruct
+      --dtype auto
+      --max-model-len 8192
+      --gpu-memory-utilization 0.55
+      --served-model-name Qwen/Qwen2.5-7B-Instruct
+      --enable-auto-tool-choice
+      --tool-call-parser hermes
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── 2. Whisper.cpp — the ears (STT) ──────────────────────────────────
+  whisper:
+    build:
+      context: ./whisper
+      dockerfile: Dockerfile
+    container_name: taible-whisper
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      - HIP_VISIBLE_DEVICES=0
+    ports:
+      - "8178:8178"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8178/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── 3. Kokoro TTS — the voice (TTS) ──────────────────────────────────
+  kokoro:
+    build:
+      context: ./kokoro
+      dockerfile: Dockerfile
+    container_name: taible-kokoro
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      - HIP_VISIBLE_DEVICES=0
+    ports:
+      - "8880:8880"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8880/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

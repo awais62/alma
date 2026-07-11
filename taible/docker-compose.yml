@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # Bind-mount source for hot reload; keep the container's node_modules
+      # and .next (anonymous volumes) so host artifacts don't clobber them.
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      # Reliable file watching for the bind mount on macOS/Docker.
+      - WATCHPACK_POLLING=true
+    command: pnpm dev

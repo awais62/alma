@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+dist
+build
+.cache
+.git
+.figma
+*.log
+.env*
+.DS_Store

@@ -1,0 +1,59 @@
+name: Render D2 diagrams
+
+# Source of truth is the .d2 files. This workflow validates that every diagram
+# renders on PRs, and commits the generated SVGs into rendered/ on push to main.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'diagrams/**'
+      - '.github/workflows/render-d2.yml'
+  pull_request:
+    paths:
+      - 'diagrams/**'
+      - '.github/workflows/render-d2.yml'
+
+permissions:
+  contents: write
+
+env:
+  # Pin the D2 version for reproducible renders. Bump deliberately.
+  # v0.7.1 verified locally against diagrams/container/voice-agent.d2.
+  D2_VERSION: v0.7.1
+  # D2 theme id applied to every diagram so they read as one system.
+  # 0 = neutral default. See https://d2lang.com/tour/themes
+  DIAGRAM_THEME: '0'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install D2 (${{ env.D2_VERSION }})
+        run: |
+          curl -fsSL https://d2lang.com/install.sh | sh -s -- --version "${D2_VERSION}"
+          d2 --version
+
+      - name: Render all diagrams
+        run: |
+          set -euo pipefail
+          rm -rf rendered && mkdir -p rendered
+          found=0
+          while IFS= read -r -d '' f; do
+            found=1
+            out="rendered/${f#diagrams/}"
+            out="${out%.d2}.svg"
+            mkdir -p "$(dirname "$out")"
+            echo "Rendering $f -> $out"
+            d2 --theme "$DIAGRAM_THEME" --layout dagre "$f" "$out"
+          done < <(find diagrams -name '*.d2' -print0)
+          if [ "$found" -eq 0 ]; then echo "No .d2 files found"; fi
+
+      - name: Commit rendered SVGs (main only)
+        if: github.event_name == 'push'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'ci: render D2 diagrams to SVG [skip ci]'
+          file_pattern: 'rendered/**/*.svg'

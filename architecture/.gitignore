@@ -1,0 +1,13 @@
+# Local D2 scratch output (CI owns rendered/)
+*.local.svg
+*.local.png
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
