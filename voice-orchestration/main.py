@@ -125,12 +125,23 @@ class TextCapture(FrameProcessor):
 
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
-        if isinstance(frame, TextFrame) and frame.text:
-            self._buf += frame.text
-            # Use slightly safer sentence splitting to avoid breaking on "$12."
-            if any(self._buf.endswith(p) for p in (". ", "! ", "? ", "\n")) or (len(self._buf) > 80 and any(self._buf.rstrip().endswith(p) for p in (".", "!", "?"))):
-                _write_message("assistant", self._buf)
-                self._buf = ""
+        
+        # Capture User's speech
+        from pipecat.frames.frames import TranscriptionFrame, LLMFullResponseFrame
+        if isinstance(frame, TranscriptionFrame) and frame.text.strip():
+            _write_message("user", frame.text)
+            
+        # Capture Assistant's full response
+        if isinstance(frame, LLMFullResponseFrame):
+            # This is the completed response from the LLM
+            # Just extract the text and write it
+            assistant_text = ""
+            for msg in frame.messages:
+                if msg.get("role") == "assistant":
+                    assistant_text += msg.get("content", "")
+            if assistant_text:
+                _write_message("assistant", assistant_text)
+                
         await self.push_frame(frame, direction)
 
 # ── MCP Tools Manifest ───────────────────────────────────────────────────
