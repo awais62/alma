@@ -5,13 +5,13 @@ import type { OrbState, Message, CartItem } from "../../types"
 
 // ── Fallback: parse AI text to detect ordered items ──
 const MENU_ITEMS: CartItem['menuItem'][] = [
-  { id: 'item_1', name: 'Taible Signature Burger', price: 12.99, description: 'Beef patty, cheese, lettuce', category: 'food', available: true },
-  { id: 'item_2', name: 'Truffle Fries',           price: 5.99,  description: 'Crispy fries with truffle oil', category: 'food', available: true },
-  { id: 'item_3', name: 'Vanilla Milkshake',        price: 4.50,  description: 'Classic vanilla bean milkshake', category: 'food', available: true },
-  { id: 'item_4', name: 'Flared White Coffee',       price: 3.99,  description: 'Signature white coffee', category: 'food', available: true },
-  { id: 'item_5', name: 'Chocolate Brownie',         price: 6.50,  description: 'Warm brownie with fudge', category: 'food', available: true },
-  { id: 'item_6', name: 'Pan-Seared Salmon',         price: 18.99, description: 'Salmon with lemon dill', category: 'food', available: true },
-  { id: 'item_7', name: 'Loaded Fries',              price: 7.99,  description: 'Fries with cheese and bacon', category: 'food', available: true },
+  { id: 'item_1', name: 'Taible Signature Burger', price: 12.99, description: 'Beef patty, cheese, lettuce', category: 'food', available: true, photo: '' },
+  { id: 'item_2', name: 'Truffle Fries',           price: 5.99,  description: 'Crispy fries with truffle oil', category: 'food', available: true, photo: '' },
+  { id: 'item_3', name: 'Vanilla Milkshake',        price: 4.50,  description: 'Classic vanilla bean milkshake', category: 'food', available: true, photo: '' },
+  { id: 'item_4', name: 'Flared White Coffee',       price: 3.99,  description: 'Signature white coffee', category: 'food', available: true, photo: '' },
+  { id: 'item_5', name: 'Chocolate Brownie',         price: 6.50,  description: 'Warm brownie with fudge', category: 'food', available: true, photo: '' },
+  { id: 'item_6', name: 'Pan-Seared Salmon',         price: 18.99, description: 'Salmon with lemon dill', category: 'food', available: true, photo: '' },
+  { id: 'item_7', name: 'Loaded Fries',              price: 7.99,  description: 'Fries with cheese and bacon', category: 'food', available: true, photo: '' },
 ]
 
 // Keywords that map to menu items for text-based fallback detection
@@ -213,7 +213,7 @@ export default function VoiceScreen({ restaurantName, tableNumber, cart, onOpenC
           const grouped: Record<string, CartItem> = {}
           for (const item of items) {
             if (grouped[item.id]) grouped[item.id].quantity++
-            else grouped[item.id] = { menuItem: { id: item.id, name: item.name, price: item.price, description: "", category: "food", available: true }, quantity: 1 }
+            else grouped[item.id] = { menuItem: { id: item.id, name: item.name, price: item.price, description: "", category: "food", available: true, photo: "" }, quantity: 1 }
           }
           if (onSetCart) onSetCart(Object.values(grouped))
         }
