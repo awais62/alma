@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   if (!apiKey || !apiSecret || !wsUrl) {
-    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+    return NextResponse.json({ error: 'Server misconfigured', details: { apiKey: !!apiKey, apiSecret: !!apiSecret, wsUrl: !!wsUrl } }, { status: 500 });
   }
 
   const at = new AccessToken(apiKey, apiSecret, {
