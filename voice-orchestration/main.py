@@ -127,20 +127,18 @@ class TextCapture(FrameProcessor):
         await super().process_frame(frame, direction)
         
         # Capture User's speech
-        from pipecat.frames.frames import TranscriptionFrame, LLMFullResponseFrame
-        if isinstance(frame, TranscriptionFrame) and frame.text.strip():
+        from pipecat.frames.frames import TranscriptionFrame, TextFrame, LLMFullResponseEndFrame
+        if isinstance(frame, TranscriptionFrame) and getattr(frame, "text", "").strip():
             _write_message("user", frame.text)
             
         # Capture Assistant's full response
-        if isinstance(frame, LLMFullResponseFrame):
-            # This is the completed response from the LLM
-            # Just extract the text and write it
-            assistant_text = ""
-            for msg in frame.messages:
-                if msg.get("role") == "assistant":
-                    assistant_text += msg.get("content", "")
-            if assistant_text:
-                _write_message("assistant", assistant_text)
+        if isinstance(frame, TextFrame) and getattr(frame, "text", ""):
+            self._buf += frame.text
+            
+        if isinstance(frame, LLMFullResponseEndFrame):
+            if self._buf:
+                _write_message("assistant", self._buf)
+                self._buf = ""
                 
         await self.push_frame(frame, direction)
 
