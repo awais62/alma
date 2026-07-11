@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing "room" query parameter' }, { status: 400 });
   }
 
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  const apiKey = process.env.LIVEKIT_API_KEY || 'API6W3qcxwg7DPo';
+  const apiSecret = process.env.LIVEKIT_API_SECRET || 'xw1zPnftZHdWNNfSavy0Qfno38e5nznlseD3f0PvctAF';
+  const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://taible-io-v2btt9lj.livekit.cloud';
 
   if (!apiKey || !apiSecret || !wsUrl) {
     const keys = Object.keys(process.env).filter(k => k.toLowerCase().includes('livekit'));
